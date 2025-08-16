@@ -278,30 +278,42 @@
       }
     }
 
-    function saveShiftGroups() {
-      const groupBlocks = document.querySelectorAll(".group-block");
-      const newGroups = {};
+function saveShiftGroups() {
+  const groupBlocks = document.querySelectorAll(".group-block");
+  const newGroups = {};
+  let hasDuplicate = false;
+  let duplicateMessages = [];
 
-      groupBlocks.forEach((block, index) => {
-        const field = fixedShiftFields[index];
-        const codes = Array.from(block.querySelectorAll(".code-input"))
-          .map(input => input.value.trim())
-          .filter(Boolean);
+  groupBlocks.forEach((block, index) => {
+    const field = fixedShiftFields[index];
+    const codes = Array.from(block.querySelectorAll(".code-input"))
+      .map(input => input.value.trim())
+      .filter(Boolean);
 
-        if (codes.length > 0) {
-          newGroups[field] = codes;
-        } else {
-          alert(`欄位「${field}」至少要有一個代號！`);
-          return;
-        }
-      });
-
-      saveShiftGroupsToLocal(newGroups);
-      alert("✅ 班別設定已儲存！");
-  // 👉 新增這一行：儲存後關閉設定面板
-  document.getElementById("customShiftSetting").style.display = "none";
-
+    if (codes.length === 0) {
+      alert(`欄位「${field}」至少要有一個代號！`);
+      return;
     }
+
+    // 檢查重複代號
+    const duplicates = codes.filter((code, i, arr) => arr.indexOf(code) !== i);
+    if (duplicates.length > 0) {
+      hasDuplicate = true;
+      duplicateMessages.push(`欄位「${field}」有重複代號：${[...new Set(duplicates)].join(", ")}`);
+    }
+
+    newGroups[field] = codes;
+  });
+
+  if (hasDuplicate) {
+    alert(`❗ 發現重複代號，請修正後再儲存：\n\n${duplicateMessages.join("\n")}`);
+    return;
+  }
+
+  saveShiftGroupsToLocal(newGroups);
+  alert("✅ 班別設定已儲存！");
+  document.getElementById("customShiftSetting").style.display = "none";
+}
   </script>
 </body>
 </html>

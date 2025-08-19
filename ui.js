@@ -17,7 +17,55 @@
     const thead = document.createElement("thead");
     const tbody = document.createElement("tbody");
 
-    // 顯示前兩列作為預覽
+    const selectedCols = new Set(); // 儲存勾選的欄位索引
+
+    // 🔼 欄選擇列（checkbox）
+    const colSelectorRow = document.createElement("tr");
+    const emptyTh = document.createElement("th");
+    emptyTh.textContent = "欄選擇";
+    colSelectorRow.appendChild(emptyTh);
+
+    data[0].forEach((cell, colIndex) => {
+      const th = document.createElement("th");
+const checkbox = document.createElement("input");
+checkbox.type = "checkbox";
+checkbox.checked = true;
+checkbox.dataset.colIndex = colIndex;
+
+if (colIndex < 3) {
+  checkbox.disabled = true;
+  // 不加入 selectedCols，改由匯入邏輯獨立處理欄1~3
+} else {
+  checkbox.checked = true;
+  checkbox.addEventListener("change", () => {
+    if (checkbox.checked) {
+      selectedCols.add(colIndex);
+    } else {
+      selectedCols.delete(colIndex);
+    }
+  });
+}
+      checkbox.dataset.colIndex = colIndex;
+
+      if (checkbox.checked && colIndex >= 3) selectedCols.add(colIndex);
+
+      checkbox.addEventListener("change", () => {
+        if (checkbox.checked) {
+          selectedCols.add(colIndex);
+        } else {
+          selectedCols.delete(colIndex);
+        }
+      });
+
+      th.appendChild(checkbox);
+      th.appendChild(document.createElement("br"));
+      //th.appendChild(document.createTextNode(cell || `欄${colIndex + 1}`));
+      colSelectorRow.appendChild(th);
+    });
+
+    thead.appendChild(colSelectorRow);
+
+    // 🔍 顯示前兩列作為預覽
     data.slice(0, 2).forEach((row, i) => {
       const tr = document.createElement("tr");
       const tdLabel = document.createElement("td");
@@ -33,7 +81,7 @@
       thead.appendChild(tr);
     });
 
-    // 後續列加入勾選框
+    // ✅ 後續列加入勾選框
     data.slice(2).forEach((row, i) => {
       const tr = document.createElement("tr");
       const tdCheckbox = document.createElement("td");
@@ -62,7 +110,7 @@
     confirmBtn.textContent = "確認匯入";
     confirmBtn.onclick = () => {
       const selectedRows = Array.from(
-        modal.querySelectorAll("input[type=checkbox]:checked")
+        modal.querySelectorAll("input[type=checkbox][data-index]:checked")
       ).map(cb => data[parseInt(cb.dataset.index)]);
 
       if (selectedRows.length === 0) {
@@ -70,7 +118,6 @@
         return;
       }
 
-      // 從 index.html 讀取起始日與週期數
       const startDateInput = document.getElementById("periodStartSelector");
       const periodCountInput = document.getElementById("periodCountSelector");
       const monthSelector = document.getElementById("monthSelector");
@@ -86,12 +133,22 @@
 
       const startDate = new Date(startDateStr);
 
+      // ✂️ 只保留勾選的欄位
+      const filteredRows = selectedRows.map(row =>
+{
+  const fixed = row.slice(0, 3); // 永遠保留前3欄
+  const dynamic = row.map((cell, i) => i >= 3 && selectedCols.has(i) ? cell : "").slice(3);
+  return fixed.concat(dynamic);
+}
+      );
+
       window.scheduleState = {
-        rawRows: selectedRows,
+        rawRows: filteredRows,
         startDate,
         periodCount,
         monthStr,
-        selectedRows
+        selectedRows,
+        selectedCols: Array.from(selectedCols)
       };
 
       if (typeof window.renderScheduleTable === "function") {

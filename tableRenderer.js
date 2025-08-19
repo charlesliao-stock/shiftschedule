@@ -1,5 +1,6 @@
 //tableRenderer.js
 
+
 (function () {
   const weekdays = ["日", "一", "二", "三", "四", "五", "六"];
   const daysPerCycle = 28;
@@ -62,7 +63,8 @@
     });
 
     const startDate = new Date(window.scheduleState.startDate);
-    const totalDays = window.scheduleState.selectedRows[0].length - 3;
+    const selectedCols = window.scheduleState.selectedCols ?? [];
+    const totalDays = selectedCols.length;
     const fullDates = getDatesRange(startDate, totalDays);
     const updatedCheck = checkSchedule([window.scheduleState.selectedRows[rowIndex]], fullDates)[0];
 
@@ -132,7 +134,9 @@
         const td = document.createElement("td");
         td.textContent = data[3 + i] ?? "";
         td.setAttribute("contenteditable", "true");
-        td.setAttribute("data-index", columnOffset + i);
+const colIndex = window.scheduleState.selectedCols?.[i];
+td.setAttribute("data-index", colIndex);
+
         td.setAttribute("data-row-index", idx);
 
         if (!td.textContent.trim()) {
@@ -179,6 +183,7 @@
   window.renderScheduleTable = function () {
     const state = window.scheduleState;
     const rawRows = state.rawRows;
+    const selectedCols = state.selectedCols ?? [];
 
     document.getElementById("weeklyTableContainer").innerHTML = "";
     document.getElementById("monthlyTableContainer").innerHTML = "";
@@ -192,7 +197,7 @@
     const isFlexible = document.getElementById("checkboxWeekly")?.checked;
     const isMonthly = document.getElementById("checkboxMonthly")?.checked;
     const startDate = new Date(state.startDate);
-    const totalDays = rawRows[0].length - 3;
+    const totalDays = selectedCols.length;
     const fullDates = getDatesRange(startDate, totalDays);
     const checkResults = checkSchedule(rawRows, fullDates);
     state.checkResults = checkResults;
@@ -202,16 +207,20 @@
       const cycleLimit = state.periodCount || totalCycles;
 
       for (let i = 0; i < Math.min(totalCycles, cycleLimit); i++) {
-        const segmentDates = getDatesRange(addDays(startDate, i * daysPerCycle), daysPerCycle);
+        const segmentDates = fullDates.slice(i * daysPerCycle, (i + 1) * daysPerCycle);
         const resultKeys = getCheckFieldTitles("flexible").concat("FF-FF<12");
         const columnOffset = 3 + i * daysPerCycle;
 
         const periodRows = rawRows.map(row => {
           const base = row.slice(0, 3);
+          const schedule = [];
 
-          const schedule = row.slice(columnOffset, columnOffset + daysPerCycle);
+          for (let j = i * daysPerCycle; j < (i + 1) * daysPerCycle; j++) {
+            const colIndex = selectedCols[j];
+            schedule.push(row[colIndex] ?? "");
+          }
+
           while (schedule.length < daysPerCycle) schedule.push("");
-
           return base.concat(schedule);
         });
 
@@ -246,11 +255,18 @@
       const monthEnd = new Date(y, m, 0);
       const monthDates = getDatesRange(monthStart, monthEnd.getDate());
       const resultKeys = getCheckFieldTitles("monthly");
+
       const columnOffset = 3 + getColumnOffsetByDate(startDate, monthStart);
 
       const periodRows = rawRows.map(row => {
         const base = row.slice(0, 3);
-        const schedule = row.slice(columnOffset, columnOffset + monthDates.length);
+        const schedule = [];
+
+        for (let i = 0; i < monthDates.length; i++) {
+          const colIndex = selectedCols[columnOffset - 3 + i];
+          schedule.push(row[colIndex] ?? "");
+        }
+
         while (schedule.length < monthDates.length) schedule.push("");
         return base.concat(schedule);
       });

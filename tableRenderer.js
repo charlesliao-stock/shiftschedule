@@ -1,6 +1,5 @@
 //tableRenderer.js
 
-
 (function () {
   const weekdays = ["日", "一", "二", "三", "四", "五", "六"];
   const daysPerCycle = 28;
@@ -63,8 +62,7 @@
     });
 
     const startDate = new Date(window.scheduleState.startDate);
-    const selectedCols = window.scheduleState.selectedCols ?? [];
-    const totalDays = selectedCols.length;
+    const totalDays = window.scheduleState.selectedRows[0].length - 3;
     const fullDates = getDatesRange(startDate, totalDays);
     const updatedCheck = checkSchedule([window.scheduleState.selectedRows[rowIndex]], fullDates)[0];
 
@@ -134,9 +132,7 @@
         const td = document.createElement("td");
         td.textContent = data[3 + i] ?? "";
         td.setAttribute("contenteditable", "true");
-const colIndex = window.scheduleState.selectedCols?.[i];
-td.setAttribute("data-index", colIndex);
-
+        td.setAttribute("data-index", columnOffset + i);
         td.setAttribute("data-row-index", idx);
 
         if (!td.textContent.trim()) {
@@ -180,128 +176,103 @@ td.setAttribute("data-index", colIndex);
     targetContainer.appendChild(table);
   }
 
-window.renderScheduleTable = function () {
-  const state = window.scheduleState;
-  const rawRows = state.rawRows;
-  const selectedCols = state.selectedCols ?? [];
+  window.renderScheduleTable = function () {
+    const state = window.scheduleState;
+    const rawRows = state.rawRows;
 
-  document.getElementById("weeklyTableContainer").innerHTML = "";
-  document.getElementById("monthlyTableContainer").innerHTML = "";
+    document.getElementById("weeklyTableContainer").innerHTML = "";
+    document.getElementById("monthlyTableContainer").innerHTML = "";
 
-  if (!rawRows || rawRows.length === 0) {
-    document.getElementById("weeklyTableContainer").innerHTML = "<p>尚未匯入班表資料</p>";
-    document.getElementById("monthlyTableContainer").innerHTML = "<p>尚未匯入班表資料</p>";
-    return;
-  }
+    if (!rawRows || rawRows.length === 0) {
+      document.getElementById("weeklyTableContainer").innerHTML = "<p>尚未匯入班表資料</p>";
+      document.getElementById("monthlyTableContainer").innerHTML = "<p>尚未匯入班表資料</p>";
+      return;
+    }
 
-  const isFlexible = document.getElementById("checkboxWeekly")?.checked;
-  const isMonthly = document.getElementById("checkboxMonthly")?.checked;
-  const startDate = new Date(state.startDate);
-  const totalDays = selectedCols.length;
+    const isFlexible = document.getElementById("checkboxWeekly")?.checked;
+    const isMonthly = document.getElementById("checkboxMonthly")?.checked;
+    const startDate = new Date(state.startDate);
+    const totalDays = rawRows[0].length - 3;
+    const fullDates = getDatesRange(startDate, totalDays);
+    const checkResults = checkSchedule(rawRows, fullDates);
+    state.checkResults = checkResults;
 
-  const daysPerCycle = 28;
-  const totalCycles = Math.ceil(totalDays / daysPerCycle);
-  const cycleLimit = state.periodCount || totalCycles;
-  const requiredDays = cycleLimit * daysPerCycle;
+    if (isFlexible) {
+      const totalCycles = Math.ceil(totalDays / daysPerCycle);
+      const cycleLimit = state.periodCount || totalCycles;
 
-  // ✅ 補齊 fullDates 至完整週期長度
-  const fullDates = getDatesRange(startDate, totalDays);
-  while (fullDates.length < requiredDays) {
-    fullDates.push(addDays(startDate, fullDates.length));
-  }
+      for (let i = 0; i < Math.min(totalCycles, cycleLimit); i++) {
+        const segmentDates = getDatesRange(addDays(startDate, i * daysPerCycle), daysPerCycle);
+        const resultKeys = getCheckFieldTitles("flexible").concat("FF-FF<12");
+        const columnOffset = 3 + i * daysPerCycle;
 
-  // ✅ 補齊 selectedCols 對應欄位不足時 fallback
-  while (selectedCols.length < requiredDays) {
-    selectedCols.push(undefined); // 表示該日無對應欄位
-  }
+        const periodRows = rawRows.map(row => {
+          const base = row.slice(0, 3);
 
-  const checkResults = checkSchedule(rawRows, fullDates);
-  state.checkResults = checkResults;
+          const schedule = row.slice(columnOffset, columnOffset + daysPerCycle);
+          while (schedule.length < daysPerCycle) schedule.push("");
 
-  if (isFlexible) {
-    for (let i = 0; i < cycleLimit; i++) {
-      const segmentDates = fullDates.slice(i * daysPerCycle, (i + 1) * daysPerCycle);
-      const resultKeys = getCheckFieldTitles("flexible").concat("FF-FF<12");
-      const columnOffset = 3 + i * daysPerCycle;
+          return base.concat(schedule);
+        });
+
+        const checks = rawRows.map((_, idx) => {
+          const result = {};
+          getCheckFieldTitles("flexible").forEach(k => {
+            const key = `週期${i + 1}_${k}`;
+            result[k] = checkResults[idx]?.[key] ?? "-";
+            result[k + "_hover"] = checkResults[idx]?.[key + "_hover"] ?? "";
+          });
+          const ffKey = `週期${i + 1}_FF-FF<12`;
+          result["FF-FF<12"] = checkResults[idx]?.[ffKey] ?? "-";
+          result["FF-FF<12_hover"] = checkResults[idx]?.[ffKey + "_hover"] ?? "";
+          return result;
+        });
+
+        renderTableBlock(
+          `第${i + 1}週期：${formatDate(segmentDates[0])} ~ ${formatDate(segmentDates.at(-1))}`,
+          periodRows,
+          segmentDates,
+          resultKeys,
+          checks,
+          columnOffset,
+          "flexible"
+        );
+      }
+    }
+
+    if (isMonthly && state.monthStr) {
+      const [y, m] = state.monthStr.split("-").map(Number);
+      const monthStart = new Date(y, m - 1, 1);
+      const monthEnd = new Date(y, m, 0);
+      const monthDates = getDatesRange(monthStart, monthEnd.getDate());
+      const resultKeys = getCheckFieldTitles("monthly");
+      const columnOffset = 3 + getColumnOffsetByDate(startDate, monthStart);
 
       const periodRows = rawRows.map(row => {
         const base = row.slice(0, 3);
-        const schedule = [];
-
-        for (let j = i * daysPerCycle; j < (i + 1) * daysPerCycle; j++) {
-          const colIndex = selectedCols[j];
-          const cell = colIndex !== undefined ? row[colIndex] ?? "" : "";
-          schedule.push(cell);
-        }
-
+        const schedule = row.slice(columnOffset, columnOffset + monthDates.length);
+        while (schedule.length < monthDates.length) schedule.push("");
         return base.concat(schedule);
       });
 
-      const checks = rawRows.map((_, idx) => {
-        const result = {};
-        getCheckFieldTitles("flexible").forEach(k => {
-          const key = `週期${i + 1}_${k}`;
-          result[k] = checkResults[idx]?.[key] ?? "-";
-          result[k + "_hover"] = checkResults[idx]?.[key + "_hover"] ?? "";
+      const checks = checkResults.map((result = {}) => {
+        const filtered = {};
+        resultKeys.forEach(k => {
+          filtered[k] = result[k] ?? "-";
+          filtered[k + "_hover"] = result[k + "_hover"] ?? "";
         });
-        const ffKey = `週期${i + 1}_FF-FF<12`;
-        result["FF-FF<12"] = checkResults[idx]?.[ffKey] ?? "-";
-        result["FF-FF<12_hover"] = checkResults[idx]?.[ffKey + "_hover"] ?? "";
-        return result;
+        return filtered;
       });
 
       renderTableBlock(
-        `第${i + 1}週期：${formatDate(segmentDates[0])} ~ ${formatDate(segmentDates.at(-1))}`,
+        `月排班：${formatDate(monthStart)} ~ ${formatDate(monthEnd)}`,
         periodRows,
-        segmentDates,
+        monthDates,
         resultKeys,
         checks,
         columnOffset,
-        "flexible"
+        "monthly"
       );
     }
-  }
-
-  if (isMonthly && state.monthStr) {
-    const [y, m] = state.monthStr.split("-").map(Number);
-    const monthStart = new Date(y, m - 1, 1);
-    const monthEnd = new Date(y, m, 0);
-    const monthDates = getDatesRange(monthStart, monthEnd.getDate());
-    const resultKeys = getCheckFieldTitles("monthly");
-
-    const columnOffset = 3 + getColumnOffsetByDate(startDate, monthStart);
-
-    const periodRows = rawRows.map(row => {
-      const base = row.slice(0, 3);
-      const schedule = [];
-
-      for (let i = 0; i < monthDates.length; i++) {
-        const colIndex = selectedCols[columnOffset - 3 + i];
-        const cell = colIndex !== undefined ? row[colIndex] ?? "" : "";
-        schedule.push(cell);
-      }
-
-      return base.concat(schedule);
-    });
-
-    const checks = checkResults.map((result = {}) => {
-      const filtered = {};
-      resultKeys.forEach(k => {
-        filtered[k] = result[k] ?? "-";
-        filtered[k + "_hover"] = result[k + "_hover"] ?? "";
-      });
-      return filtered;
-    });
-
-    renderTableBlock(
-      `月排班：${formatDate(monthStart)} ~ ${formatDate(monthEnd)}`,
-      periodRows,
-      monthDates,
-      resultKeys,
-      checks,
-      columnOffset,
-      "monthly"
-    );
-  }
-};
+  };
 })();

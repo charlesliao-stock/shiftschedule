@@ -1,3 +1,5 @@
+//periodStartSelector.js
+
 function getCycleStartDates(checkDate) {
   const firstCycleStart = new Date("2025-01-06"); // 第一個週期起始日（週一）
   const cycleLength = 28; // 每週期 28 天

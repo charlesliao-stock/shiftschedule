@@ -1,5 +1,4 @@
 //monthSelector.js
-//monthSelector.js
 
 function renderMonthSelector() {
   const select = document.getElementById("monthSelector");

@@ -1,3 +1,5 @@
+//periodCountSelector.js
+
 function renderPeriodCountSelector() {
   const select = document.getElementById("periodCountSelector");
   select.innerHTML = ""; // 清空舊項目

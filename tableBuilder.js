@@ -2,6 +2,12 @@
 
 window.TableBuilder = {
   renderTableBlock(title, periodRows, dates, resultKeys, checkData, columnOffset, mode, periodIndex = 0) {
+    const shiftGroups = window.loadShiftGroups?.() ?? {};
+    const leaveCodes = new Set([
+      ...(shiftGroups["OFF"] || []),
+      ...(shiftGroups["WW"] || [])
+    ]);
+
     const table = document.createElement("table");
     const caption = document.createElement("caption");
     caption.textContent = title;
@@ -53,10 +59,16 @@ window.TableBuilder = {
         td.setAttribute("data-index", columnOffset + i);
         td.setAttribute("data-row-index", idx);
         td.setAttribute("data-date", DateUtils.formatDate(dates[i]));
-        td.setAttribute("data-name", data[1] ?? ""); // 姓名欄位
+        td.setAttribute("data-name", data[1] ?? "");
 
         td._originalValue = td.textContent;
         td._editHistory = [];
+
+        const shiftCode = td.textContent.trim();
+        if (leaveCodes.has(shiftCode)) {
+          td.style.color = "red";
+          td.title = "休假班別";
+        }
 
         if (!td.textContent.trim()) {
           td.classList.add("emptyCell");
@@ -72,11 +84,21 @@ window.TableBuilder = {
         });
 
         td.addEventListener("input", () => {
+          const newCode = td.textContent.trim();
+          if (leaveCodes.has(newCode)) {
+            td.style.color = "red";
+            td.title = "休假班別";
+          } else {
+            td.style.color = "";
+            td.title = newCode ? "" : "尚無資料";
+          }
+
           if (td.textContent !== td._originalValue) {
             td.classList.add("modifiedCell");
           } else {
             td.classList.remove("modifiedCell");
           }
+
           CellSync.syncAndRecheckCell(td, dates, resultKeys, mode, columnOffset);
         });
 
@@ -87,7 +109,7 @@ window.TableBuilder = {
           if (e.key === "Tab") {
             e.preventDefault();
             const next = e.shiftKey ? allCells[currentIndex - 1] : allCells[currentIndex + 1];
-            if (next) CellSync.focusAndSelect(next);
+            if (next && next.isContentEditable) CellSync.focusAndSelect(next);
           }
 
           if (e.key === "Enter") {
@@ -109,6 +131,11 @@ window.TableBuilder = {
               td.textContent = previous;
               td.classList.add("revertedCell");
               td.title = "已復原 ↩️";
+              if (leaveCodes.has(previous)) {
+                td.style.color = "red";
+              } else {
+                td.style.color = "";
+              }
               if (previous === td._originalValue) {
                 td.classList.remove("modifiedCell");
               }

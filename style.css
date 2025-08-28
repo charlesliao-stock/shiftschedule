@@ -71,13 +71,7 @@ button:hover {
   background-color: #f8f9fa;
   color: #999;
 }
-.weekend {
-  background-color: #fff3cd;
-}
-.alertCell {
-  background-color: #f8d7da;
-  color: #842029;
-}
+
 
 #shiftGroupEditor {
   display: flex;
@@ -92,3 +86,66 @@ button:hover {
   border-radius: 6px;
   min-width: 200px;
 }
+
+.modifiedCell {
+  background-color: #e6f2ff;
+}
+
+.revertedCell {
+  background-color: #d4edda;
+}
+
+#historyPanel {
+  background: #f9f9f9;
+  border: 1px solid #ccc;
+  padding: 1em;
+  margin-top: 1em;
+}
+
+.historyItem {
+  margin-bottom: 1em;
+}
+
+thead th {
+  background-color: #eee;
+  font-weight: bold;
+}
+
+tbody td {
+  background-color: #fff;
+}
+
+@media screen and (max-width: 768px) {
+  table {
+    font-size: 12px;
+  }
+
+  th, td {
+    padding: 4px;
+  }
+}
+
+.updatedCell {
+  background-color: #fff3cd;
+  transition: background-color 0.3s ease;
+}
+
+#historyPanel {
+  background: #f9f9f9;
+  border: 1px solid #ccc;
+  padding: 10px;
+  margin-top: 10px;
+}
+
+#historyTable {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 10px;
+}
+
+#historyTable th, #historyTable td {
+  border: 1px solid #ccc;
+  padding: 6px;
+  text-align: center;
+}
+

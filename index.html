@@ -6,6 +6,34 @@
   <link rel="stylesheet" href="style.css" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <script src="excelExporter.js"></script>
+  <style>
+    #settingPanel {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      margin-bottom: 10px;
+      gap: 10px;
+    }
+
+    #selectors label,
+    #selectors select {
+      margin-right: 10px;
+    }
+
+    #actionButtons button {
+      margin-left: 10px;
+    }
+
+    #actionButtons {
+      display: flex;
+      align-items: center;
+    }
+
+    #historyPanel {
+      margin-top: 10px;
+    }
+  </style>
 </head>
 <body>
   <h1>四週變形工時、月排班檢查工具(測試版)</h1>
@@ -21,19 +49,42 @@
   </div>
 
   <div id="settingPanel">
-    <label for="periodStartSelector">📅 檢查起始日：</label>
-    <select id="periodStartSelector"></select>
+    <div id="selectors">
+      <label for="periodStartSelector">📅 檢查起始日：</label>
+      <select id="periodStartSelector"></select>
 
-    <label for="periodCountSelector">🔢 週期數：</label>
-    <select id="periodCountSelector"></select>
+      <label for="periodCountSelector">🔢 週期數：</label>
+      <select id="periodCountSelector"></select>
 
-    <label for="monthSelector">🗓️ 檢查月份：</label>
-    <select id="monthSelector"></select>
+      <label for="monthSelector">🗓️ 檢查月份：</label>
+      <select id="monthSelector"></select>
+    </div>
+
+    <div id="actionButtons">
+      <button onclick="exportScheduleToExcel()">📤 匯出班表結果</button>
+      <button onclick="ShiftGroupEditor.toggleSettingPanel()">⚙️ 設定</button>
+      <button id="historyToggleBtn" onclick="TableHistory.toggleHistoryPanel()">📋 異動歷史</button>
+    </div>
   </div>
 
   <input type="file" id="excelFile" accept=".xls,.xlsx" />
-  <button onclick="exportScheduleToExcel()">📤 匯出班表結果</button>
-  <button onclick="ShiftGroupEditor.toggleSettingPanel()">⚙️ 設定</button>
+
+  <!-- 📋 異動歷史面板（緊貼按鈕下方） -->
+  <div id="historyPanel" style="display:none;">
+    <table id="historyTable">
+      <thead>
+        <tr>
+          <th>✔️</th>
+          <th>姓名</th>
+          <th>日期</th>
+          <th>異動前</th>
+          <th>異動後</th>
+        </tr>
+      </thead>
+      <tbody id="historyTableBody"></tbody>
+    </table>
+    <button onclick="TableHistory.restoreSelected()">🔄 復原勾選項目</button>
+  </div>
 
   <div id="customShiftSetting" style="display:none;">
     <h3>自訂班別代號（週期與月統計共用）</h3>
@@ -58,7 +109,8 @@
   <script src="scheduleRenderer.js"></script>
   <script src="checker.js"></script>
   <script src="modeSelector.js"></script>
-  <script src="shiftGroupEditor.js"></script> <!-- ✅ 新增模組 -->
+  <script src="shiftGroupEditor.js"></script>
+  <script src="tableHistory.js"></script>
 
   <script>
     window.onload = function () {
@@ -95,16 +147,12 @@
       }
     });
 
-    document.getElementById("checkboxWeekly").addEventListener("change", () => {
-      if (window.scheduleState?.selectedRows?.length) {
-        window.renderScheduleTable(window.scheduleState.selectedRows);
-      }
-    });
-
-    document.getElementById("checkboxMonthly").addEventListener("change", () => {
-      if (window.scheduleState?.selectedRows?.length) {
-        window.renderScheduleTable(window.scheduleState.selectedRows);
-      }
+    ["checkboxWeekly", "checkboxMonthly"].forEach(id => {
+      document.getElementById(id).addEventListener("change", () => {
+        if (window.scheduleState?.selectedRows?.length) {
+          window.renderScheduleTable(window.scheduleState.selectedRows);
+        }
+      });
     });
 
     document.getElementById("info-toggle").addEventListener("click", function () {

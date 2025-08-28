@@ -1,7 +1,7 @@
 //tableBuilder.js
 
 window.TableBuilder = {
-  renderTableBlock(title, periodRows, dates, resultKeys, checkData, columnOffset, mode) {
+  renderTableBlock(title, periodRows, dates, resultKeys, checkData, columnOffset, mode, periodIndex = 0) {
     const table = document.createElement("table");
     const caption = document.createElement("caption");
     caption.textContent = title;
@@ -52,7 +52,11 @@ window.TableBuilder = {
         td.setAttribute("contenteditable", "true");
         td.setAttribute("data-index", columnOffset + i);
         td.setAttribute("data-row-index", idx);
-        td.setAttribute("data-date", DateUtils.formatDate(dates[i])); // ✅ 新增
+        td.setAttribute("data-date", DateUtils.formatDate(dates[i]));
+        td.setAttribute("data-name", data[1] ?? ""); // 姓名欄位
+
+        td._originalValue = td.textContent;
+        td._editHistory = [];
 
         if (!td.textContent.trim()) {
           td.classList.add("emptyCell");
@@ -63,15 +67,17 @@ window.TableBuilder = {
           td.classList.add("weekend");
         }
 
+        td.addEventListener("focus", () => {
+          td._editHistory.push(td.textContent);
+        });
+
         td.addEventListener("input", () => {
+          if (td.textContent !== td._originalValue) {
+            td.classList.add("modifiedCell");
+          } else {
+            td.classList.remove("modifiedCell");
+          }
           CellSync.syncAndRecheckCell(td, dates, resultKeys, mode, columnOffset);
-          td.classList.add("updatedCell");
-          td.title = "已更新 ✅";
-          clearTimeout(td._updateTimer);
-          td._updateTimer = setTimeout(() => {
-            td.classList.remove("updatedCell");
-            td.title = td.textContent.trim() ? "" : "尚無資料";
-          }, 1500);
         });
 
         td.addEventListener("keydown", (e) => {
@@ -92,6 +98,24 @@ window.TableBuilder = {
             if (nextRow) {
               const target = nextRow.cells[colIndex];
               if (target?.isContentEditable) CellSync.focusAndSelect(target);
+            }
+          }
+
+          if (e.ctrlKey && e.key === "z") {
+            e.preventDefault();
+            const history = td._editHistory;
+            if (history && history.length > 0) {
+              const previous = history.pop();
+              td.textContent = previous;
+              td.classList.add("revertedCell");
+              td.title = "已復原 ↩️";
+              if (previous === td._originalValue) {
+                td.classList.remove("modifiedCell");
+              }
+              setTimeout(() => {
+                td.classList.remove("revertedCell");
+                td.title = td.textContent.trim() ? "" : "尚無資料";
+              }, 1500);
             }
           }
         });
@@ -117,10 +141,16 @@ window.TableBuilder = {
       table.appendChild(tr);
     });
 
+    const wrapper = document.createElement("div");
+    wrapper.className = "period-block";
+    wrapper.setAttribute("data-period-index", periodIndex);
+    wrapper.innerHTML = `<h3>第 ${periodIndex + 1} 週期</h3>`;
+    wrapper.appendChild(table);
+
     const targetContainer = mode === "flexible"
       ? document.getElementById("weeklyTableContainer")
       : document.getElementById("monthlyTableContainer");
 
-    targetContainer.appendChild(table);
+    targetContainer.appendChild(wrapper);
   }
 };

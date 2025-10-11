@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <title>民眾閱讀入口</title>
+  <style>
+    body { font-family: sans-serif; padding: 20px; background-color: #f1f1f1; }
+    button { margin: 10px; padding: 10px 20px; font-size: 16px; }
+    .lang-btn { margin-right: 10px; }
+
+    #html-container {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background-color: rgba(0, 0, 0, 0.7);
+      display: none;
+      justify-content: center;
+      align-items: center;
+      z-index: 1000;
+      flex-direction: column;
+    }
+    #html-frame {
+      width: 80%; height: 80%;
+      border: none;
+      background-color: white;
+    }
+    #close-btn {
+      position: absolute;
+      top: 20px; right: 20px;
+      background-color: red;
+      color: white;
+      border: none;
+      padding: 10px;
+      font-size: 18px;
+      cursor: pointer;
+      z-index: 1100;
+    }
+    #toolbar {
+      position: absolute;
+      top: 20px; left: 20px;
+      z-index: 1100;
+      background-color: white;
+      padding: 10px;
+      border-radius: 5px;
+    }
+    #toolbar button {
+      margin-right: 5px;
+      padding: 5px 10px;
+    }
+    #feedback-form {
+      display: none;
+      background-color: white;
+      padding: 20px;
+      border-radius: 5px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+      max-width: 400px;
+      margin-top: 30px;
+    }
+    #feedback-form input[type="radio"] { margin-right: 10px; }
+    #feedback-form button { margin-top: 10px; }
+  </style>
+  <script>
+    function openHTML(file) {
+      const frame = document.getElementById('html-frame');
+      frame.src = file;
+      document.getElementById('html-container').style.display = 'flex';
+    }
+
+    function closeHTML() {
+      document.getElementById('html-container').style.display = 'none';
+      document.getElementById('html-frame').src = "";
+      showFeedbackForm();
+    }
+
+    function showFeedbackForm() {
+      document.getElementById('feedback-form').style.display = 'block';
+    }
+
+    function submitFeedback() {
+      const q1 = document.querySelector('input[name="q1"]:checked').value;
+      const q2 = document.querySelector('input[name="q2"]:checked').value;
+      const fileName = document.getElementById('html-frame').src.split('?')[0].split('/').pop();
+
+      fetch('https://script.google.com/macros/s/AKfycbxnrDxhiNDIMzODh8AgAB4UHOeuN5kO2rvw9fi1FbgtUEzchLt9CqDH7eeQ1j5Y7dg/exec', {
+        method: 'POST',
+        body: new URLSearchParams({ fileName, q1, q2 })
+      }).then(res => res.json())
+        .then(() => alert("感謝您的回饋！"))
+        .catch(err => console.error("Error:", err));
+    }
+
+    function translateIframe() {
+      const iframe = document.getElementById('html-frame');
+      const url = iframe.src;
+      const translateUrl = `https://translate.google.com/translate?sl=auto&tl=zh-TW&u=${encodeURIComponent(url)}`;
+      window.open(translateUrl, '_blank');
+    }
+
+    function adjustFontSize(delta) {
+      const iframe = document.getElementById('html-frame');
+      const message = delta > 0 ? "zoomIn" : "zoomOut";
+      iframe.contentWindow.postMessage(message, "*");
+    }
+
+    function readIframeContent() {
+      const iframe = document.getElementById('html-frame');
+      try {
+        const doc = iframe.contentDocument || iframe.contentWindow.document;
+        const text = doc.body.innerText;
+        const utterance = new SpeechSynthesisUtterance(text);
+        speechSynthesis.speak(utterance);
+      } catch (e) {
+        alert("無法朗讀內容，請確認文件來源與格式");
+      }
+    }
+
+    function printIframe() {
+      const iframe = document.getElementById('html-frame');
+      iframe.contentWindow.focus();
+      iframe.contentWindow.print();
+    }
+  </script>
+</head>
+<body>
+  <h1>民眾閱讀入口</h1>
+
+  <!-- 文件選單 -->
+  <div>
+    <button onclick="openHTML('護理-衛教-1-001.html')">心臟手術後自我照顧須知</button>
+    <button onclick="openHTML('護理-衛教-1-003.html')">心臟手術後傷口照護須知</button>
+    <button onclick="openHTML('護理-衛教-1-005.html')">認識主動脈瘤</button>
+    <button onclick="openHTML('護理-衛教-1-006.html')">心導管檢查須知</button>
+    <button onclick="openHTML('護理-衛教-2-013.html')">咀嚼吞嚥障礙的中醫穴位按摩</button>
+  </div>
+
+  <!-- HTML浮動視窗 -->
+  <div id="html-container">
+    <div id="toolbar">
+      <button onclick="translateIframe()">🌐 翻譯</button>
+      <button onclick="adjustFontSize(1)">🔠 放大</button>
+      <button onclick="adjustFontSize(-1)">🔡 縮小</button>
+      <button onclick="readIframeContent()">🔊 朗讀</button>
+      <button onclick="printIframe()">🖨️ 列印</button>
+    </div>
+    <iframe id="html-frame" src="" frameborder="0"></iframe>
+    <button id="close-btn" onclick="closeHTML()">X</button>
+  </div>
+
+  <!-- 滿意度調查表單 -->
+  <div id="feedback-form">
+    <h3>滿意度調查</h3>
+    <p>1. 這份衛教資料對我來說是容易閱讀的？</p>
+    <label><input type="radio" name="q1" value="5" checked> 5</label>
+    <label><input type="radio" name="q1" value="4"> 4</label>
+    <label><input type="radio" name="q1" value="3"> 3</label>
+    <label><input type="radio" name="q1" value="2"> 2</label>
+    <label><input type="radio" name="q1" value="1"> 1</label>
+    <br><br>
+    <p>2. 這份衛教資料對我來說是有幫助的？</p>
+    <label><input type="radio" name="q2" value="5" checked> 5</label>
+    <label><input type="radio" name="q2" value="4"> 4</label>
+    <label><input type="radio" name="q2" value="3"> 3</label>
+    <label><input type="radio" name="q2" value="2"> 2</label>
+    <label><input type="radio" name="q2" value="1"> 1</label>
+    <br><br>
+    <button onclick="submitFeedback()">提交</button>
+  </div>
+</body>
+</html>

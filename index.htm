@@ -89,12 +89,12 @@
         .catch(err => console.error("Error:", err));
     }
 
-    function translateIframe() {
-      const iframe = document.getElementById('html-frame');
-      const url = iframe.src;
-      const translateUrl = `https://translate.google.com/translate?sl=auto&tl=zh-TW&u=${encodeURIComponent(url)}`;
-      window.open(translateUrl, '_blank');
-    }
+function translateIframe(lang = 'en') {
+  const iframe = document.getElementById('html-frame');
+  const originalUrl = iframe.src;
+  const translatedUrl = `https://translate.google.com/translate?sl=auto&tl=${lang}&u=${encodeURIComponent(originalUrl)}`;
+  iframe.src = translatedUrl;
+}
 
     function adjustFontSize(delta) {
       const iframe = document.getElementById('html-frame');
@@ -166,4 +166,5 @@
     <button onclick="submitFeedback()">提交</button>
   </div>
 </body>
+
 </html>
